@@ -1,53 +1,63 @@
+import streamlit as st
 import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
 import joblib
 
-# Load dataset
-data = pd.read_csv('WA_Fn-UseC_-Telco-Customer-Churn.csv')
-data['TotalCharges'] = pd.to_numeric(data['TotalCharges'], errors='coerce')
+print("Streamlit app starting...")  # Add this
+# Load model and preprocessor
+model = joblib.load('churn_model.pkl')
+preprocessor = joblib.load('preprocessor.pkl')
 
-# Define features and target
-X = data.drop(['customerID', 'Churn'], axis=1)
-y = data['Churn'].map({'Yes': 1, 'No': 0})
+# Streamlit app
+st.title("Customer Churn Prediction")
 
-# Define numerical and categorical columns
-numerical_cols = ['tenure', 'MonthlyCharges', 'TotalCharges']
-categorical_cols = [col for col in X.columns if col not in numerical_cols]
+# Input fields
+tenure = st.slider("Tenure (months)", 0, 72, 12)
+monthly_charges = st.number_input("Monthly Charges ($)", 0.0, 200.0, 50.0)
+total_charges = st.number_input("Total Charges ($)", 0.0, 10000.0, 600.0)
+contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"])
+payment_method = st.selectbox("Payment Method", ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"])
+internet_service = st.selectbox("Internet Service", ["DSL", "Fiber optic", "No"])
+gender = st.selectbox("Gender", ["Female", "Male"])
+senior_citizen = st.selectbox("Senior Citizen", ["No", "Yes"])
+partner = st.selectbox("Partner", ["No", "Yes"])
+dependents = st.selectbox("Dependents", ["No", "Yes"])
+phone_service = st.selectbox("Phone Service", ["No", "Yes"])
+multiple_lines = st.selectbox("Multiple Lines", ["No", "Yes", "No phone service"])
+online_security = st.selectbox("Online Security", ["No", "Yes", "No internet service"])
+online_backup = st.selectbox("Online Backup", ["No", "Yes", "No internet service"])
+device_protection = st.selectbox("Device Protection", ["No", "Yes", "No internet service"])
+tech_support = st.selectbox("Tech Support", ["No", "Yes", "No internet service"])
+streaming_tv = st.selectbox("Streaming TV", ["No", "Yes", "No internet service"])
+streaming_movies = st.selectbox("Streaming Movies", ["No", "Yes", "No internet service"])
+paperless_billing = st.selectbox("Paperless Billing", ["No", "Yes"])
 
-# Create preprocessing pipeline
-preprocessor = ColumnTransformer(
-    transformers=[
-        ('num', Pipeline([
-            ('imputer', SimpleImputer(strategy='median')),
-            ('scaler', StandardScaler())
-        ]), numerical_cols),
-        ('cat', OneHotEncoder(drop='first', sparse_output=False), categorical_cols)
-    ]
-)
+# Prepare input data
+input_data = pd.DataFrame({
+    'gender': [gender],
+    'SeniorCitizen': [1 if senior_citizen == "Yes" else 0],
+    'Partner': [partner],
+    'Dependents': [dependents],
+    'tenure': [tenure],
+    'PhoneService': [phone_service],
+    'MultipleLines': [multiple_lines],
+    'InternetService': [internet_service],
+    'OnlineSecurity': [online_security],
+    'OnlineBackup': [online_backup],
+    'DeviceProtection': [device_protection],
+    'TechSupport': [tech_support],
+    'StreamingTV': [streaming_tv],
+    'StreamingMovies': [streaming_movies],
+    'Contract': [contract],
+    'PaperlessBilling': [paperless_billing],
+    'PaymentMethod': [payment_method],
+    'MonthlyCharges': [monthly_charges],
+    'TotalCharges': [total_charges]
+})
 
-# Apply preprocessing
-X_preprocessed = preprocessor.fit_transform(X)
-X_train, X_test, y_train, y_test = train_test_split(X_preprocessed, y, test_size=0.2, random_state=42)
-
-# Train Random Forest
-rf = RandomForestClassifier(random_state=42)
-rf.fit(X_train, y_train)
-
-# Evaluate
-y_pred = rf.predict(X_test)
-print("Random Forest Performance:")
-print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
-print(f"Precision: {precision_score(y_test, y_pred):.4f}")
-print(f"Recall: {recall_score(y_test, y_pred):.4f}")
-print(f"ROC-AUC: {roc_auc_score(y_test, y_pred):.4f}")
-
-# Save model and preprocessor
-joblib.dump(rf, 'churn_model.pkl')
-joblib.dump(preprocessor, 'preprocessor.pkl')
+# Predict
+if st.button("Predict"):
+    input_preprocessed = preprocessor.transform(input_data)
+    prediction = model.predict(input_preprocessed)[0]
+    probability = model.predict_proba(input_preprocessed)[0][1]
+    st.write(f"Churn Prediction: {'Yes' if prediction == 1 else 'No'}")
+    st.write(f"Churn Probability: {probability:.2%}")
