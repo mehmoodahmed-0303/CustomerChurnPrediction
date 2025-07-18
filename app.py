@@ -4,8 +4,8 @@ import joblib
 
 print("Streamlit app starting...")  # Add this
 # Load model and preprocessor
-model = joblib.load('churn_model.pkl')
-preprocessor = joblib.load('preprocessor.pkl')
+model = joblib.load('Churn_model.pkl')
+preprocessor = joblib.load('Preprocessor.pkl')
 
 # Streamlit app
 st.title("Customer Churn Prediction")
